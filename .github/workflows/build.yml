@@ -1,0 +1,67 @@
+name: Build and Deploy cart microservice
+
+on:
+  push:
+    branches-ignore: main
+
+env:
+    AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+    AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    GITHUB_USERNAME: ${{ secrets.GIT_USERNAME }}
+    GITHUB_EMAIL: ${{ secrets.GIT_EMAIL }}
+    AWS_REGION: "ap-south-1"
+    IMAGE_NAME: cart-ms
+    VERSION_FILE: ".github/workflows/version.txt"
+
+jobs:
+  build-and-deploy:
+    if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v4.3.0
+      with:
+        version:
+
+    - name: Get latest docker image version
+      id: version
+      run: |
+        #!/bin/bash
+        file=${{ env.VERSION_FILE }}
+        current_ver=$(cat "$file")
+        new_ver=$(awk -v v="$current_ver" 'BEGIN {printf "%.1f\n", v+1}')
+        echo ${current version: $current_ver}
+        echo "current_ver=$current_ver" >> $GITHUB_OUTPUT
+        echo "$new_ver" >> ${{ env.VERSION_FILE }}
+        echo "new_ver=$new_ver" >> $GITHUB_OUTPUT
+        
+    - name: Update latest docker image version
+      run: |
+        new_ver=${{ steps.version.outputs.new_ver }}
+        git config user.name ${{ env.GITHUB_USERNAME }}
+        git config user.email ${{ env.GITHUB_EMAIL }}
+        git add ${{ env.VERSION_FILE }}
+        git commit -m "Preparing for next version of docker image"
+        git push origin develop
+
+    - name: Login to ECR
+      run: |
+        aws ecr get-login-password \
+          --region ${{ env.AWS_REGION }} | \
+          docker login \
+          --username AWS \
+          --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com      
+
+    - name: Build docker image
+      run: |
+        docker build -t ${{ env.IMAGE_NAME }} .
+        docker tag ${{ env.IMAGE_NAME }} ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/robot-shop:${{ steps.version.outputs.current_ver }}
+    
+    - name: Push docker image
+      run: |
+        docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/robot-shop:${{ steps.version.outputs.current_ver }}
