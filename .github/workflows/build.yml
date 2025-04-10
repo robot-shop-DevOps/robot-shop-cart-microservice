@@ -35,7 +35,7 @@ jobs:
         file=${{ env.VERSION_FILE }}
         current_ver=$(cat "$file")
         new_ver=$(awk -v v="$current_ver" 'BEGIN {printf "%.1f\n", v+1}')
-        echo ${current version: $current_ver}
+        echo "current version: $current_ver"
         echo "current_ver=$current_ver" >> $GITHUB_OUTPUT
         echo "$new_ver" >> ${{ env.VERSION_FILE }}
         echo "new_ver=$new_ver" >> $GITHUB_OUTPUT
