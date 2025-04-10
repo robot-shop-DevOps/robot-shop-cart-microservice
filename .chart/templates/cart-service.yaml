@@ -1,0 +1,16 @@
+{{- if .Values.cart.enable }}
+apiVersion: v1
+
+kind: Service
+
+metadata:
+  name: {{ .Values.cart.microservice }}-service
+
+spec:
+  type: {{ .Values.cart.service.type }}
+  selector:
+    service: {{ .Values.cart.microservice }}
+  ports:
+  - name: http
+    port: {{ .Values.cart.service.port }}
+{{- end }}

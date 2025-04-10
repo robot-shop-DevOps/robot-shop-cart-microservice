@@ -1,0 +1,34 @@
+{{- if .Values.cart.enable }}
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: {{ .Values.cart.microservice }}-deployment
+  labels:
+    service: {{ .Values.cart.microservice }}
+
+spec:
+  replicas: {{ .Values.cart.replicas }}
+  selector:
+    matchLabels:
+      service: {{ .Values.cart.microservice }}
+  template:
+    metadata:
+      labels:
+        service: {{ .Values.cart.microservice }}
+    spec:
+      containers:
+      - name: {{ .Values.cart.microservice }}
+        image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.version }}"
+        imagePullPolicy: {{ .Values.cart.container.image.imagePullPolicy }}
+        ports: 
+        - containerPort: {{ .Values.cart.container.port }}
+        env:
+        - name: INSTANA_AUTO_PROFILE
+          value: "true"
+        - name: REDIS_HOST
+          value: redis-service
+        - name: CATALOGUE_HOST
+          value: catalogue-service
+{{- end }}
