@@ -31,6 +31,13 @@ jobs:
       with:
         version: 3.9.0
 
+    - name: Configure git
+      run: |
+        git config user.name ${{ env.GITHUB_USERNAME }}
+        git config user.email ${{ env.GITHUB_EMAIL }}
+        git remote set-url origin https://x-access-token:${{ env.GITHUB_PAT }}@github.com/${{ env.GITHUB_USERNAME }}/robot-shop-cart-microservice.git
+        git pull origin develop --rebase
+
     - name: Get latest docker image version
       id: version
       run: |
@@ -45,11 +52,7 @@ jobs:
         
     - name: Update latest docker image version
       run: |
-        new_ver=${{ steps.version.outputs.new_ver }}
-        git config user.name ${{ env.GITHUB_USERNAME }}
-        git config user.email ${{ env.GITHUB_EMAIL }}
-        git remote set-url origin https://x-access-token:${{ env.GITHUB_PAT }}@github.com/${{ env.GITHUB_USERNAME }}/robot-shop-cart-microservice.git
-        git pull origin develop --rebase
+        new_ver=${{ steps.version.outputs.new_ver }}    
         git add ${{ env.VERSION_FILE }}
         git commit -m "Preparing for next version of docker image [skip ci]"
         git push origin develop
