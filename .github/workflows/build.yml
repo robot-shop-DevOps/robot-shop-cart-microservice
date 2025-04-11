@@ -68,9 +68,9 @@ jobs:
       run: |
         docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.current_ver }}
 
-        - name: Update latest docker image version
-        run: |
-          new_ver=${{ steps.version.outputs.new_ver }}    
-          git add ${{ env.VERSION_FILE }}
-          git commit -m "Preparing for next version of docker image [skip ci]"
-          git push origin develop
+    - name: Update latest docker image version
+      run: |
+        new_ver=${{ steps.version.outputs.new_ver }}    
+        git add ${{ env.VERSION_FILE }}
+        git commit -m "Preparing for next version of docker image [skip ci]"
+        git push origin develop
