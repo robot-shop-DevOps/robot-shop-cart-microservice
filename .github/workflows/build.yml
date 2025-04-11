@@ -50,13 +50,6 @@ jobs:
         echo "current_ver=$current_ver" >> $GITHUB_OUTPUT
         echo "$new_ver" > ${{ env.VERSION_FILE }}
         echo "new_ver=$new_ver" >> $GITHUB_OUTPUT
-        
-    - name: Update latest docker image version
-      run: |
-        new_ver=${{ steps.version.outputs.new_ver }}    
-        git add ${{ env.VERSION_FILE }}
-        git commit -m "Preparing for next version of docker image [skip ci]"
-        git push origin develop
 
     - name: Login to ECR
       run: |
@@ -73,4 +66,11 @@ jobs:
     
     - name: Push docker image
       run: |
-        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ steps.version.outputs.current_ver }}
+        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.current_ver }}
+
+        - name: Update latest docker image version
+        run: |
+          new_ver=${{ steps.version.outputs.new_ver }}    
+          git add ${{ env.VERSION_FILE }}
+          git commit -m "Preparing for next version of docker image [skip ci]"
+          git push origin develop
