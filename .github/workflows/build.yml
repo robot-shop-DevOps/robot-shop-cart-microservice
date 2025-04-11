@@ -59,7 +59,7 @@ jobs:
 
     - name: Login to ECR
       run: |
-        aws ecr get-login-password \
+        aws ecr-public get-login-password \
           --region ${{ env.AWS_REGION }} | \
           docker login \
           --username AWS \
