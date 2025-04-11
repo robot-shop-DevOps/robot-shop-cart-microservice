@@ -62,7 +62,7 @@ jobs:
     - name: Build docker image
       run: |
         docker build -t ${{ env.IMAGE_NAME }} .
-        docker tag ${{ env.IMAGE_NAME }} public.ecr.aws/v1g8i1q6/robot-shop:${{ steps.version.outputs.current_ver }}
+        docker tag ${{ env.IMAGE_NAME }} public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.current_ver }}
     
     - name: Push docker image
       run: |
