@@ -12,6 +12,7 @@ env:
     GITHUB_EMAIL: ${{ secrets.GIT_EMAIL }}
     GITHUB_PAT: ${{ secrets.GIT_PAT }}
     AWS_REGION: "ap-south-1"
+    AWS_REGION_ECR: "us-east-1"
     IMAGE_NAME: cart-ms
     VERSION_FILE: "version.txt"
 
@@ -60,7 +61,7 @@ jobs:
     - name: Login to ECR
       run: |
         aws ecr-public get-login-password \
-          --region ${{ env.AWS_REGION }} | \
+          --region ${{ env.AWS_REGION_ECR }} | \
           docker login \
           --username AWS \
           --password-stdin public.ecr.aws/v1g8i1q6      
@@ -72,4 +73,4 @@ jobs:
     
     - name: Push docker image
       run: |
-        docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/robot-shop:${{ steps.version.outputs.current_ver }}
+        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ steps.version.outputs.current_ver }}
