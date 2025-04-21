@@ -45,7 +45,7 @@ jobs:
     - name: Get latest docker image version
       run: |
         image_tag=${GITHUB_SHA::8}
-        echo "IMAGE_TAG=$image_tag" > $GITHUB_ENV
+        echo "IMAGE_TAG=$image_tag" >> $GITHUB_ENV
 
     - name: Login to ECR
       run: |
@@ -82,8 +82,8 @@ jobs:
     - name: Find project namespace
       run: |
         if kubectl get ns ${{ env.PROJECT }}-dev > /dev/null; then
-          echo "namespace=${{ env.PROJECT }}-dev" > $GITHUB_ENV
-          echo "namespace_found=true" > $GITHUB_ENV
+          echo "namespace=${{ env.PROJECT }}-dev" >> $GITHUB_ENV
+          echo "namespace_found=true" >> $GITHUB_ENV
         fi
 
     - name: Create project namespace
@@ -92,7 +92,7 @@ jobs:
         set -e
         if kubectl create ns ${{ env.PROJECT }}-dev > /dev/null; then
           echo "✅ Namespace ${{ env.PROJECT }}-dev created."
-          echo "namespace=${{ env.PROJECT }}-dev" > $GITHUB_ENV
+          echo "namespace=${{ env.PROJECT }}-dev" >> $GITHUB_ENV
         else
           echo "❌ Namespace ${{ env.PROJECT }}-dev failed to create."
         fi
