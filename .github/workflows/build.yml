@@ -17,6 +17,7 @@ env:
     IMAGE_NAME: cart-ms
     VERSION_FILE: "version.txt"
     PROJECT: "robot-shop"
+    RELEASE: cart-microservice
 
 jobs:
   build-and-deploy:
@@ -42,10 +43,9 @@ jobs:
         git pull origin develop --rebase
 
     - name: Get latest docker image version
-      id: version
       run: |
         image_tag=${GITHUB_SHA::8}
-        echo "image_tag=$image_tag" > $GITHUB_OUTPUT
+        echo "IMAGE_TAG=$image_tag" > $GITHUB_ENV
 
     - name: Login to ECR
       run: |
@@ -58,11 +58,11 @@ jobs:
     - name: Build docker image
       run: |
         docker build -t ${{ env.IMAGE_NAME }} .
-        docker tag ${{ env.IMAGE_NAME }} public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.image_tag }}
+        docker tag ${{ env.IMAGE_NAME }} public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
     
     - name: Push docker image
       run: |
-        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.image_tag }}
+        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
 
     - name: Check minikube connectivity
       run: |
@@ -109,3 +109,12 @@ jobs:
         echo "chart_path=$chart_path" > $GITHUB_OUTPUT
         cd $chart_path
         helm lint
+
+    - name: Deploy with helm
+      run: |
+        helm upgrade ${{ env.RELEASE }} ${{ steps.helmcharts.outputs.chart_path }} --namespace ${{ env.namespace }} --install --atomic
+
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/cart-deployment
+        helm status ${{ env.RELEASE }} --namespace ${{ env.namespace }} --output table

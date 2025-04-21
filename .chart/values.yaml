@@ -2,8 +2,8 @@ microservice: cart
 replicas: 1
 container:
   image:
-    repo: <ECR_URL>       # <-- placeholder
-    version: <Version>    # <-- placeholder
+    repo: ${ECR_URL}      # <-- placeholder
+    version: ${IMAGE_TAG}    # <-- placeholder
     pullPolicy: IfNotPresent
   port: 8080
 service:
