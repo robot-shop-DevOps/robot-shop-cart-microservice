@@ -11,6 +11,7 @@ env:
     GITHUB_USERNAME: ${{ secrets.GIT_USERNAME }}
     GITHUB_EMAIL: ${{ secrets.GIT_EMAIL }}
     GITHUB_PAT: ${{ secrets.GIT_PAT }}
+    ECR_URL: public.ecr.aws/v1g8i1q6 
     AWS_REGION: "ap-south-1"
     AWS_REGION_ECR: "us-east-1"
     IMAGE_NAME: cart-ms
@@ -43,14 +44,8 @@ jobs:
     - name: Get latest docker image version
       id: version
       run: |
-        #!/bin/bash
-        file=${{ env.VERSION_FILE }}
-        current_ver=$(cat "$file")
-        new_ver=$(awk -v v="$current_ver" 'BEGIN {printf "%.1f\n", v+1}')
-        echo "current version: $current_ver"
-        echo "current_ver=$current_ver" >> $GITHUB_OUTPUT
-        echo "$new_ver" > ${{ env.VERSION_FILE }}
-        echo "new_ver=$new_ver" >> $GITHUB_OUTPUT
+        image_tag=$GITHUB_SHA::8
+        export "image_tag=$image_tag" > $GITHUB_OUTPUT
 
     - name: Login to ECR
       run: |
@@ -58,16 +53,16 @@ jobs:
           --region ${{ env.AWS_REGION_ECR }} | \
           docker login \
           --username AWS \
-          --password-stdin public.ecr.aws/v1g8i1q6      
+          --password-stdin ${{ env.ECR_URL }}     
 
     - name: Build docker image
       run: |
         docker build -t ${{ env.IMAGE_NAME }} .
-        docker tag ${{ env.IMAGE_NAME }} public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.current_ver }}
+        docker tag ${{ env.IMAGE_NAME }} public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.image_tag }}
     
     - name: Push docker image
       run: |
-        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.current_ver }}
+        docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.image_tag }}
 
     - name: Check minikube connectivity
       run: |
@@ -101,10 +96,16 @@ jobs:
         else
           echo "❌ Namespace ${{ env.PROJECT }}-dev failed to create."
         fi
-    
-    - name: Update latest docker image version
+
+    - name: Validate helm charts
+      id: helmcharts
       run: |
-        new_ver=${{ steps.version.outputs.new_ver }}    
-        git add ${{ env.VERSION_FILE }}
-        git commit -m "Preparing for next version of docker image [skip ci]"
-        git push origin develop
+        chart_path=$(find . -type d -name ".chart" -print -quit)
+        if [ -z $chart_path]; then
+          echo "Error: Helm chart directory not found"
+          exit 1
+        fi
+        
+        echo "chart_path=$chart_path" > $GITHUB_OUTPUT
+        cd $chart_path
+        helm lint
