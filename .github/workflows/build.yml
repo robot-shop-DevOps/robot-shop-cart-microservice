@@ -44,8 +44,8 @@ jobs:
     - name: Get latest docker image version
       id: version
       run: |
-        image_tag=$GITHUB_SHA::8
-        export "image_tag=$image_tag" > $GITHUB_OUTPUT
+        image_tag=${GITHUB_SHA::8}
+        echo "image_tag=$image_tag" > $GITHUB_OUTPUT
 
     - name: Login to ECR
       run: |
