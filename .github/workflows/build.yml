@@ -112,7 +112,10 @@ jobs:
 
     - name: Deploy with helm
       run: |
-        helm upgrade ${{ env.RELEASE }} ${{ steps.helmcharts.outputs.chart_path }} --namespace ${{ env.namespace }} --install --atomic
+        helm upgrade ${{ env.RELEASE }} ${{ steps.helmcharts.outputs.chart_path }} \
+        --namespace ${{ env.namespace }} --install --atomic \
+        --set container.image.repo=${{ env.ECR_URL }} \
+        --set container.image.version=${{ env.IMAGE_TAG }}
 
     - name: Verify deployment
       run: |
