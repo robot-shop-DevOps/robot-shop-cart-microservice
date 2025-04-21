@@ -119,5 +119,5 @@ jobs:
 
     - name: Verify deployment
       run: |
-        kubectl rollout status deployment/cart-deployment
+        kubectl rollout status deployment/cart-deployment --namespace ${{ env.namespace }}
         helm status ${{ env.RELEASE }} --namespace ${{ env.namespace }} --output table
