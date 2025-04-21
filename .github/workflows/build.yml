@@ -15,11 +15,12 @@ env:
     AWS_REGION_ECR: "us-east-1"
     IMAGE_NAME: cart-ms
     VERSION_FILE: "version.txt"
+    PROJECT: "robot-shop"
 
 jobs:
   build-and-deploy:
     if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' && github.actor != 'github-actions[bot]'}}
-    runs-on: ubuntu-latest
+    runs-on: robot-shop-runner
     
     steps:
     - name: Checkout code
@@ -68,6 +69,39 @@ jobs:
       run: |
         docker push public.ecr.aws/v1g8i1q6/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.current_ver }}
 
+    - name: Check minikube connectivity
+      run: |
+        set -e
+        if minikube status > /dev/null; then
+          echo "✅ Minikube is running!"
+        else
+          echo "❌ Minikube is not running"
+        fi
+
+        if kubectl get nodes > /dev/null; then
+          echo "✅ Minikube cluster is reachable"
+        else
+          echo "❌ Minikube cluster not reachable"
+        fi
+
+    - name: Find project namespace
+      run: |
+        if kubectl get ns ${{ env.PROJECT }}-dev > /dev/null; then
+          echo "namespace=${{ env.PROJECT }}-dev" > $GITHUB_ENV
+          echo "namespace_found=true" > $GITHUB_ENV
+        fi
+
+    - name: Create project namespace
+      if: ${{ env.namespace_found != 'true'}}
+      run: |
+        set -e
+        if kubectl create ns ${{ env.PROJECT }}-dev > /dev/null; then
+          echo "✅ Namespace ${{ env.PROJECT }}-dev created."
+          echo "namespace=${{ env.PROJECT }}-dev" > $GITHUB_ENV
+        else
+          echo "❌ Namespace ${{ env.PROJECT }}-dev failed to create."
+        fi
+    
     - name: Update latest docker image version
       run: |
         new_ver=${{ steps.version.outputs.new_ver }}    

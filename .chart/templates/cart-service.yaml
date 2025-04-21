@@ -1,16 +1,14 @@
-{{- if .Values.cart.enable }}
 apiVersion: v1
 
 kind: Service
 
 metadata:
-  name: {{ .Values.cart.microservice }}-service
+  name: {{ .Values.microservice }}-service
 
 spec:
-  type: {{ .Values.cart.service.type }}
+  type: {{ .Values.service.type }}
   selector:
-    service: {{ .Values.cart.microservice }}
+    service: {{ .Values.microservice }}
   ports:
   - name: http
-    port: {{ .Values.cart.service.port }}
-{{- end }}
+    port: {{ .Values.service.port }}
