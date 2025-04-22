@@ -3,12 +3,12 @@ apiVersion: v1
 kind: Service
 
 metadata:
-  name: {{ .Values.microservice }}-service
+  name: {{ .Values.cart.microservice }}-service
 
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.cart.service.type }}
   selector:
-    service: {{ .Values.microservice }}
+    service: {{ .Values.cart.microservice }}
   ports:
   - name: http
-    port: {{ .Values.service.port }}
+    port: {{ .Values.cart.service.port }}

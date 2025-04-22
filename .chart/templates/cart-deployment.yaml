@@ -3,30 +3,25 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: {{ .Values.microservice }}-deployment
+  name: {{ .Values.cart.microservice }}-deployment
   labels:
-    service: {{ .Values.microservice }}
+    service: {{ .Values.cart.microservice }}
 
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: {{ .Values.cart.replicas }}
   selector:
     matchLabels:
-      service: {{ .Values.microservice }}
+      service: {{ .Values.cart.microservice }}
   template:
     metadata:
       labels:
-        service: {{ .Values.microservice }}
+        service: {{ .Values.cart.microservice }}
     spec:
       containers:
-      - name: {{ .Values.microservice }}
-        image: "{{ .Values.container.image.repo }}:{{ .Values.container.image.version }}"
-        imagePullPolicy: {{ .Values.container.image.imagePullPolicy }}
+      - name: {{ .Values.cart.microservice }}
+        image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.version }}"
+        imagePullPolicy: {{ .Values.cart.container.image.imagePullPolicy }}
         ports: 
-        - containerPort: {{ .Values.container.port }}
+        - containerPort: {{ .Values.cart.container.port }}
         env:
-        - name: INSTANA_AUTO_PROFILE
-          value: "true"
-        - name: REDIS_HOST
-          value: redis-service
-        - name: CATALOGUE_HOST
-          value: catalogue-service
+{{ .Values.cart.container.env | toYaml | indent 8 }}

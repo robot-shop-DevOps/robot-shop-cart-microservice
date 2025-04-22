@@ -15,15 +15,12 @@ env:
     AWS_REGION: "ap-south-1"
     AWS_REGION_ECR: "us-east-1"
     IMAGE_NAME: cart-ms
-    VERSION_FILE: "version.txt"
     PROJECT: "robot-shop"
     RELEASE: cart-microservice
 
 jobs:
-  build-and-deploy:
-    if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' && github.actor != 'github-actions[bot]'}}
+  prepare:
     runs-on: robot-shop-runner
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -35,17 +32,15 @@ jobs:
       with:
         version: 3.9.0
 
-    - name: Configure git
-      run: |
-        git config user.name ${{ env.GITHUB_USERNAME }}
-        git config user.email ${{ env.GITHUB_EMAIL }}
-        git remote set-url origin https://x-access-token:${{ env.GITHUB_PAT }}@github.com/${{ env.GITHUB_USERNAME }}/robot-shop-cart-microservice.git
-        git pull origin develop --rebase
-
+  build:
+    needs: prepare
+    runs-on: robot-shop-runner
+    steps:
     - name: Get latest docker image version
+      id: version
       run: |
         image_tag=${GITHUB_SHA::8}
-        echo "IMAGE_TAG=$image_tag" >> $GITHUB_ENV
+        echo "IMAGE_TAG=$image_tag" >> $GITHUB_OUTPUT
 
     - name: Login to ECR
       run: |
@@ -58,12 +53,17 @@ jobs:
     - name: Build docker image
       run: |
         docker build -t ${{ env.IMAGE_NAME }} .
-        docker tag ${{ env.IMAGE_NAME }} ${{ env.ECR_URL }}/robot-shop:${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
+        docker tag ${{ env.IMAGE_NAME }} ${{ env.ECR_URL }}/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.IMAGE_TAG }}
     
     - name: Push docker image
       run: |
-        docker push ${{ env.ECR_URL }}/robot-shop:${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
+        docker push ${{ env.ECR_URL }}/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.IMAGE_TAG }}
 
+  deploy:
+    if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' }}
+    needs: build
+    runs-on: robot-shop-runner
+    steps:
     - name: Check minikube connectivity
       run: |
         set -e
@@ -101,12 +101,12 @@ jobs:
       id: helmcharts
       run: |
         chart_path=$(find . -type d -name ".chart" -print -quit)
-        if [ -z $chart_path]; then
+        if [ -z $chart_path ]; then
           echo "Error: Helm chart directory not found"
           exit 1
         fi
         
-        echo "chart_path=$chart_path" > $GITHUB_OUTPUT
+        echo "chart_path=$chart_path" >> $GITHUB_OUTPUT
         cd $chart_path
         helm lint
 
@@ -114,8 +114,8 @@ jobs:
       run: |
         helm upgrade ${{ env.RELEASE }} ${{ steps.helmcharts.outputs.chart_path }} \
         --namespace ${{ env.namespace }} --install --atomic \
-        --set container.image.repo=${{ env.ECR_URL }}/robot-shop \
-        --set container.image.version=${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
+        --set cart.container.image.repo=${{ env.ECR_URL }}/robot-shop \
+        --set cart.container.image.version=${{ env.IMAGE_NAME }}-${{ needs.build.outputs.IMAGE_TAG }}
 
     - name: Verify deployment
       run: |
