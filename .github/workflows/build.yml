@@ -120,4 +120,5 @@ jobs:
     - name: Verify deployment
       run: |
         kubectl rollout status deployment/cart-deployment --namespace ${{ env.namespace }}
+        kubectl rollout status statefulset/redis-statefulset --namespace ${{ env.namespace }}
         helm status ${{ env.RELEASE }} --namespace ${{ env.namespace }} --output table
