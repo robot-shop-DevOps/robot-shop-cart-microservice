@@ -1,4 +1,4 @@
 apiVersion: v2
-name: robot-shop/cart-microservice
+name: cart-microservice
 version: 1.0.0
 description: A Helm chart for cart microservice k8s
