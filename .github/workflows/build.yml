@@ -10,58 +10,115 @@ env:
     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     GITHUB_USERNAME: ${{ secrets.GIT_USERNAME }}
     GITHUB_EMAIL: ${{ secrets.GIT_EMAIL }}
+    GITHUB_PAT: ${{ secrets.GIT_PAT }}
+    ECR_URL: public.ecr.aws/v1g8i1q6 
     AWS_REGION: "ap-south-1"
+    AWS_REGION_ECR: "us-east-1"
     IMAGE_NAME: cart-ms
-    VERSION_FILE: ".github/workflows/version.txt"
+    PROJECT: "robot-shop"
+    RELEASE: cart-microservice
 
 jobs:
-  build-and-deploy:
-    if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' }}
-    runs-on: ubuntu-latest
-    
+  prepare:
+    runs-on: robot-shop-runner
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        token: ${{ env.GITHUB_PAT }}
 
     - name: Setup Helm
       uses: azure/setup-helm@v4.3.0
       with:
-        version:
+        version: 3.9.0
 
+  build:
+    needs: prepare
+    runs-on: robot-shop-runner
+    steps:
     - name: Get latest docker image version
       id: version
       run: |
-        #!/bin/bash
-        file=${{ env.VERSION_FILE }}
-        current_ver=$(cat "$file")
-        new_ver=$(awk -v v="$current_ver" 'BEGIN {printf "%.1f\n", v+1}')
-        echo ${current version: $current_ver}
-        echo "current_ver=$current_ver" >> $GITHUB_OUTPUT
-        echo "$new_ver" >> ${{ env.VERSION_FILE }}
-        echo "new_ver=$new_ver" >> $GITHUB_OUTPUT
-        
-    - name: Update latest docker image version
-      run: |
-        new_ver=${{ steps.version.outputs.new_ver }}
-        git config user.name ${{ env.GITHUB_USERNAME }}
-        git config user.email ${{ env.GITHUB_EMAIL }}
-        git add ${{ env.VERSION_FILE }}
-        git commit -m "Preparing for next version of docker image"
-        git push origin develop
+        image_tag=${GITHUB_SHA::8}
+        echo "IMAGE_TAG=$image_tag" >> $GITHUB_OUTPUT
 
     - name: Login to ECR
       run: |
-        aws ecr get-login-password \
-          --region ${{ env.AWS_REGION }} | \
+        aws ecr-public get-login-password \
+          --region ${{ env.AWS_REGION_ECR }} | \
           docker login \
           --username AWS \
-          --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com      
+          --password-stdin ${{ env.ECR_URL }}     
 
     - name: Build docker image
       run: |
         docker build -t ${{ env.IMAGE_NAME }} .
-        docker tag ${{ env.IMAGE_NAME }} ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/robot-shop:${{ steps.version.outputs.current_ver }}
+        docker tag ${{ env.IMAGE_NAME }} ${{ env.ECR_URL }}/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.IMAGE_TAG }}
     
     - name: Push docker image
       run: |
-        docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/robot-shop:${{ steps.version.outputs.current_ver }}
+        docker push ${{ env.ECR_URL }}/robot-shop:${{ env.IMAGE_NAME }}-${{ steps.version.outputs.IMAGE_TAG }}
+
+  deploy:
+    if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' }}
+    needs: build
+    runs-on: robot-shop-runner
+    steps:
+    - name: Check minikube connectivity
+      run: |
+        set -e
+        if minikube status > /dev/null; then
+          echo "✅ Minikube is running!"
+        else
+          echo "❌ Minikube is not running"
+        fi
+
+        if kubectl get nodes > /dev/null; then
+          echo "✅ Minikube cluster is reachable"
+        else
+          echo "❌ Minikube cluster not reachable"
+        fi
+
+    - name: Find project namespace
+      run: |
+        if kubectl get ns ${{ env.PROJECT }}-dev > /dev/null; then
+          echo "namespace=${{ env.PROJECT }}-dev" >> $GITHUB_ENV
+          echo "namespace_found=true" >> $GITHUB_ENV
+        fi
+
+    - name: Create project namespace
+      if: ${{ env.namespace_found != 'true'}}
+      run: |
+        set -e
+        if kubectl create ns ${{ env.PROJECT }}-dev > /dev/null; then
+          echo "✅ Namespace ${{ env.PROJECT }}-dev created."
+          echo "namespace=${{ env.PROJECT }}-dev" >> $GITHUB_ENV
+        else
+          echo "❌ Namespace ${{ env.PROJECT }}-dev failed to create."
+        fi
+
+    - name: Validate helm charts
+      id: helmcharts
+      run: |
+        chart_path=$(find . -type d -name ".chart" -print -quit)
+        if [ -z $chart_path ]; then
+          echo "Error: Helm chart directory not found"
+          exit 1
+        fi
+        
+        echo "chart_path=$chart_path" >> $GITHUB_OUTPUT
+        cd $chart_path
+        helm lint
+
+    - name: Deploy with helm
+      run: |
+        helm upgrade ${{ env.RELEASE }} ${{ steps.helmcharts.outputs.chart_path }} \
+        --namespace ${{ env.namespace }} --install --atomic \
+        --set cart.container.image.repo=${{ env.ECR_URL }}/robot-shop \
+        --set cart.container.image.version=${{ env.IMAGE_NAME }}-${{ needs.build.outputs.IMAGE_TAG }}
+
+    - name: Verify deployment
+      run: |
+        kubectl rollout status deployment/cart-deployment --namespace ${{ env.namespace }}
+        kubectl rollout status statefulset/redis-statefulset --namespace ${{ env.namespace }}
+        helm status ${{ env.RELEASE }} --namespace ${{ env.namespace }} --output table

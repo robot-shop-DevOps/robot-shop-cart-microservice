@@ -1,4 +1,3 @@
-{{- if .Values.cart.enable }}
 apiVersion: v1
 
 kind: Service
@@ -13,4 +12,3 @@ spec:
   ports:
   - name: http
     port: {{ .Values.cart.service.port }}
-{{- end }}
