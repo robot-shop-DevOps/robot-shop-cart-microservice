@@ -1,0 +1,22 @@
+name: Build and Deploy cart microservice to Pre-Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      JENKINS_PRE_URL:
+        type: string
+        required: true
+        description: Provide the Jenkins URL to trigger the job
+
+env:
+  JENKINS_JOB: 'robot-shop_cart-microservice'
+
+jobs:
+  Jenkins-CICD-Trigger:
+    runs-on: robot-shop-runner
+    steps:
+    - name: Trigger jenkins job
+      run: |
+        response=$(curl -X POST -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/${{ env.JENKINS_JOB }}/build?token=${{ secrets.JENKINS_PRE_TOKEN }}")
+        
+        echo "response: $response"

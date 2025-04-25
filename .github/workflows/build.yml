@@ -1,4 +1,4 @@
-name: Build and Deploy cart microservice
+name: Build and Deploy cart microservice to Development
 
 on:
   push:

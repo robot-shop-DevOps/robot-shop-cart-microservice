@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+
+    environment {
+        git_url = 'https://github.com/robot-shop-DevOps/robot-shop-cart-microservice.git'
+        ecr_url = 'public.ecr.aws/v1g8i1q6'
+        aws_region_ecr = 'us-east-1'
+        aws_creds = credentials('ECR_SA')
+        
+    }
+    
+    stages {
+        stage('Install and configure dependencies') {
+            stages {
+                stage('Setup helm') {
+                    steps {
+                        echo "Setting up helm"
+
+                        sh '''
+                            if ! helm version > /dev/null; then
+                                curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+                                chmod 700 get_helm.sh
+                                ./get_helm.sh
+                                echo "Helm setup successfull with version: $(helm --version)"
+                            else
+                                echo "Helm already installed with version: $(helm version)"
+                            fi
+                        '''
+                    }
+                }
+
+                stage('Setup AWS CLI') {
+                    steps {
+                        echo "Setting up AWS CLI"
+
+                        sh '''
+                            if aws --version > /dev/null; then
+                                curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                                unzip awscliv2.zip
+                                sudo ./aws/install
+                                echo "AWS CLI setup successfull with version: $(aws --version)"
+                            else
+                                echo "AWS CLI already installed with version: $(aws --version)"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Checkout code') {
+            steps {
+                echo "Checking out code from Git SCM"
+
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '466bfd9a-0b0b-4602-9e7c-2351a7eefce2', url: $git_url]])
+
+                echo "Code checked out successfully"
+            }
+        }
+
+        stage('Get latest docker image version') {
+            steps {
+                echo "Fetching latest docker image tag"
+
+                script {
+                    def commitSHA = env.GIT_COMMIT
+                    def imageTag = commitSHA[0..7]
+                    env.image_tag = imageTag
+                }
+
+                echo "Latest docker image tag: ${env.image_tag}"
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                echo "Logging into ECR with service account"
+
+                sh '''
+                    aws ecr-public get-login-password \
+                    --region $AWS_REGION_ECR | \
+                    docker login \
+                    --username AWS \
+                    --password-stdin $ECR_URL   
+                '''
+            }
+        }
+    }
+}
