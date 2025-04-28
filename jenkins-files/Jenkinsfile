@@ -10,20 +10,18 @@ pipeline {
     }
     
     stages {
-        stage('Install and configure dependencies') {
+        stage('Checking dependencies') {
             stages {
                 stage('Setup helm') {
                     steps {
-                        echo "Setting up helm"
+                        echo "Checking helm status"
 
                         sh '''
-                            if ! helm version > /dev/null; then
-                                curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-                                chmod 700 get_helm.sh
-                                ./get_helm.sh
-                                echo "Helm setup successfull with version: $(helm --version)"
+                            if helm version > /dev/null; then                                
+                                echo "Helm is installed with version: $(helm --version)"
                             else
-                                echo "Helm already installed with version: $(helm version)"
+                                echo "Helm not installed!!! Aborting the job"
+                                exit 1
                             fi
                         '''
                     }
@@ -34,13 +32,12 @@ pipeline {
                         echo "Setting up AWS CLI"
 
                         sh '''
-                            if aws --version > /dev/null; then
-                                curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                                unzip awscliv2.zip
-                                sudo ./aws/install
-                                echo "AWS CLI setup successfull with version: $(aws --version)"
+                            if aws --version > /dev/null; then                                
+                                echo "AWS CLI is installed with version: $(aws --version)"
                             else
-                                echo "AWS CLI already installed with version: $(aws --version)"
+                                echo "AWS CLI not installed!!! Aborting the job"
+                                exit 1
+                            fi
                         '''
                     }
                 }
