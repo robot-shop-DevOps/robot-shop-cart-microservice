@@ -12,7 +12,7 @@ pipeline {
     stages {
         stage('Checking dependencies') {
             stages {
-                stage('Setup helm') {
+                stage('Check helm dependency') {
                     steps {
                         echo "Checking helm status"
 
@@ -27,9 +27,9 @@ pipeline {
                     }
                 }
 
-                stage('Setup AWS CLI') {
+                stage('Check AWS CLI dependency') {
                     steps {
-                        echo "Setting up AWS CLI"
+                        echo "Checking AWS CLI status"
 
                         sh '''
                             if aws --version > /dev/null; then                                
@@ -48,7 +48,7 @@ pipeline {
             steps {
                 echo "Checking out code from Git SCM"
 
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '466bfd9a-0b0b-4602-9e7c-2351a7eefce2', url: $git_url]])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '466bfd9a-0b0b-4602-9e7c-2351a7eefce2', url: env.git_url]])
 
                 echo "Code checked out successfully"
             }
@@ -74,10 +74,10 @@ pipeline {
 
                 sh '''
                     aws ecr-public get-login-password \
-                    --region $AWS_REGION_ECR | \
+                    --region $aws_region_ecr | \
                     docker login \
                     --username AWS \
-                    --password-stdin $ECR_URL   
+                    --password-stdin $ecr_url   
                 '''
             }
         }
