@@ -41,6 +41,21 @@ pipeline {
                         '''
                     }
                 }
+
+                stage('Check docker dependency') {
+                    steps {
+                        echo "Checking docker status"
+
+                        sh '''
+                            if docker --version > /dev/null; then                                
+                                echo "Docker is installed with version: $(docker --version)"
+                            else
+                                echo "Docker not installed!!! Aborting the job"
+                                exit 1
+                            fi
+                        '''
+                    }
+                }
             }
         }
 
