@@ -6,7 +6,7 @@ pipeline {
         ecr_url = 'public.ecr.aws/v1g8i1q6'
         aws_region_ecr = 'us-east-1'
         aws_creds = credentials('ECR_SA')
-        
+        image_name = 'cart-ms'       
     }
     
     stages {
@@ -56,6 +56,21 @@ pipeline {
                         '''
                     }
                 }
+
+                stage('Check kind dependency') {
+                    steps {
+                        echo "Checking kind status"
+
+                        sh '''
+                            if kind version > /dev/null; then                                
+                                echo "Kind is installed with version: $(kind version)"
+                            else
+                                echo "Kind not installed!!! Aborting the job"
+                                exit 1
+                            fi
+                        '''
+                    }
+                }
             }
         }
 
@@ -64,8 +79,6 @@ pipeline {
                 echo "Checking out code from Git SCM"
 
                 checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: '466bfd9a-0b0b-4602-9e7c-2351a7eefce2', url: env.git_url]])
-
-                echo "Code checked out successfully"
             }
         }
 
@@ -93,6 +106,75 @@ pipeline {
                     docker login \
                     --username AWS \
                     --password-stdin $ecr_url   
+                '''
+            }
+        }
+
+        stage('Build docker image') {
+            steps {
+                echo "Building docker image"
+
+                sh '''
+                    docker build -t $image_name .
+                    docker tag $image_name $ecr_url/robot-shop-pre/cart-ms:$image_tag
+                '''
+            }
+        }
+
+        stage('Push docker image') {
+            steps {
+                echo "Pushing docker image to ECR repo"
+
+                sh '''
+                    docker push $ecr_url/robot-shop-pre/cart-ms:$image_tag
+                '''
+            }
+        }
+
+        stage('Check Pre01 cluster connectivity') {
+            steps {
+                sh '''
+                    if docker ps --filter 'name=pre01-control-plane' > /dev/null; then
+                      echo "✅ Kind Pre01 control plane is running!"
+                    else
+                      echo "❌ Kind Pre01 control plane not reachable."
+                    fi
+
+                    if kubectl --context=kind-pre01 get nodes > /dev/null; then
+                      echo "✅ Kind Pre01 node reachable."
+                    else
+                      echo "❌ Kind Pre01 node not reachable."
+                    fi
+
+                    if kubectl --context=kind-pre01 cluster-info > /dev/null; then
+                      echo "✅ Pre01 cluster info - $(kubectl --context=kind-pre01 cluster-info)"
+                    else
+                      echo "❌ Pre01 cluster info not available."
+                    fi
+                '''
+            }
+        }
+
+        stage('Check Pre02 cluster connectivity') {
+            steps {
+                sh '''
+                    if docker ps --filter 'name=pre02-control-plane' > /dev/null; then
+                      echo "✅ Kind Pre02 control plane is running!"
+                    else
+                      echo "❌ Kind Pre02 control plane not reachable."
+                    fi
+
+                    if kubectl --context=kind-pre02 get nodes > /dev/null; then
+                      echo "✅ Kind Pre02 node reachable."
+                    else
+                      echo "❌ Kind Pre02 node not reachable."
+                    fi
+
+                    if kubectl --context=kind-pre02 cluster-info > /dev/null; then
+                      echo "✅ Pre02 cluster info - $(kubectl --context=kind-pre02 cluster-info)"
+                    else
+                      echo "❌ Pre02 cluster info not available."
+                    fi
                 '''
             }
         }
