@@ -17,6 +17,6 @@ jobs:
     steps:
     - name: Trigger jenkins job
       run: |
-        response=$(curl -X POST -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/${{ env.JENKINS_JOB }}/build?token=${{ secrets.JENKINS_PRE_TOKEN }}")
+        response=$(curl -X POST -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/Robot%20Shop/job/${{ env.JENKINS_JOB }}/build?token=${{ secrets.JENKINS_PRE_TOKEN }}")
         
         echo "response: $response"
