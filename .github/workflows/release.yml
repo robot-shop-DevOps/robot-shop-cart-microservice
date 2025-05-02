@@ -9,7 +9,7 @@ on:
         description: Provide the Jenkins URL to trigger the job
 
 env:
-  JENKINS_JOB: 'robot-shop_cart-microservice'
+  JENKINS_JOB: 'cart-microservice'
 
 jobs:
   Jenkins-CICD-Trigger:
