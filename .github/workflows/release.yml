@@ -24,7 +24,7 @@ jobs:
         queue_location=$(echo "$response" | grep -i 'Location:' | awk '{print $2}')
 
         while true; do
-          buildnumber=$(curl -X GET -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "$queue_location/api/json" | jq '.executable_number')
+          buildnumber=$(curl -X GET -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${queue_location}api/json" | jq '.executable_number')
           if [[ $buildnumber != "null" ]]; then
             echo "Build Started with Build number: $buildnumber"
             echo "buildnumber=$buildnumber" >> $GITHUB_ENV
