@@ -154,29 +154,5 @@ pipeline {
                 '''
             }
         }
-
-        stage('Check Pre02 cluster connectivity') {
-            steps {
-                sh '''
-                    if docker ps --filter 'name=pre02-control-plane' > /dev/null; then
-                      echo "✅ Kind Pre02 control plane is running!"
-                    else
-                      echo "❌ Kind Pre02 control plane not reachable."
-                    fi
-
-                    if kubectl --context=kind-pre02 get nodes > /dev/null; then
-                      echo "✅ Kind Pre02 node reachable."
-                    else
-                      echo "❌ Kind Pre02 node not reachable."
-                    fi
-
-                    if kubectl --context=kind-pre02 cluster-info > /dev/null; then
-                      echo "✅ Pre02 cluster info - $(kubectl --context=kind-pre02 cluster-info)"
-                    else
-                      echo "❌ Pre02 cluster info not available."
-                    fi
-                '''
-            }
-        }
     }
 }
