@@ -20,3 +20,17 @@ jobs:
         response=$(curl -i -X POST -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/Robot%20Shop/job/${{ env.JENKINS_JOB }}/build?token=${{ secrets.JENKINS_PRE_TOKEN }}")
         
         echo "response: $response"
+
+        queue_location=$(echo "$response" | grep -i 'Location:' | awk '{print $2}')
+
+        while true; do
+          buildnumber=$(curl -X GET -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "$queue_location/api/json" | jq '.executable_number')
+          if [[ $buildnumber != "null" ]]; then
+            echo "Build Started with Build number: $buildnumber"
+            echo "buildnumber=$buildnumber" >> $GITHUB_ENV
+            break
+          else
+            echo "Build still in queue"
+            sleep 30
+          fi
+        done
