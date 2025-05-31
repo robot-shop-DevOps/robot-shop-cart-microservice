@@ -10,6 +10,7 @@ on:
 
 env:
   JENKINS_JOB: 'cart-microservice'
+  JENKINS_TIMEOUT: 3600
 
 jobs:
   Jenkins-CICD-Trigger:
@@ -22,7 +23,6 @@ jobs:
         echo "response: $response"
 
         queue_location=$(echo "$response" | grep -i 'Location:' | awk '{print $2}' | tr -d '\r')
-        echo $queue_location
 
         while true; do
           buildnumber=$(curl -X GET -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${queue_location}api/json" | jq '.executable.number')
@@ -33,5 +33,29 @@ jobs:
           else
             echo "Build still in queue"
             sleep 30
+          fi
+        done
+    
+    - name: Check Jenkins build status
+      run: |
+        start=$(EPOCHSECONDS)
+        while true; do
+          response=$(curl -s - u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/Robot%20Shop/job/${{ env.JENKINS_JOB }}/${{ env.buildnumber }}/api/json")
+
+          build_result=$(echo $response | jq -r '.result')
+          echo "The build result is: $build_result"
+
+          if [[ $build_result == "FAILURE" ]]; then
+            echo "The build has Failed ❌"
+            exit 1
+          elif [[ $build_result == "SUCCESS" ]]; then
+            echo "The build has Succeeded ✅"
+          else
+            echo "Waiting to complete..."
+          fi
+
+          if (( EPOCHSECONDS-start > ${{ env.JENKINS_TIMEOUT }} )); then
+            echo "Jenkins job has timed out!!!"
+            break
           fi
         done
