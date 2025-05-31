@@ -22,6 +22,7 @@ jobs:
         echo "response: $response"
 
         queue_location=$(echo "$response" | grep -i 'Location:' | awk '{print $2}')
+        echo $queue_location
 
         while true; do
           buildnumber=$(curl -X GET -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${queue_location}api/json" | jq '.executable_number')
