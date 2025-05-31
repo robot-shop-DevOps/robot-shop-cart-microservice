@@ -40,7 +40,7 @@ jobs:
       run: |
         start=$EPOCHSECONDS
         while true; do
-          response=$(curl -s - u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/Robot%20Shop/job/${{ env.JENKINS_JOB }}/${{ env.buildnumber }}/api/json")
+          response=$(curl -s -u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/Robot%20Shop/job/${{ env.JENKINS_JOB }}/${{ env.buildnumber }}/api/json")
 
           build_result=$(echo $response | jq -r '.result')
           echo "The build result is: $build_result"
