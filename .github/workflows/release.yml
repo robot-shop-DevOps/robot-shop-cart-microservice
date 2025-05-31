@@ -38,7 +38,7 @@ jobs:
     
     - name: Check Jenkins build status
       run: |
-        start=$(EPOCHSECONDS)
+        start=$EPOCHSECONDS
         while true; do
           response=$(curl -s - u ${{ secrets.JENKINS_PRE_USERNAME }}:${{ secrets.JENKINS_PRE_PASSWORD }} "${{ inputs.JENKINS_PRE_URL }}/job/Robot%20Shop/job/${{ env.JENKINS_JOB }}/${{ env.buildnumber }}/api/json")
 
