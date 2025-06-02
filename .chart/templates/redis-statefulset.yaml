@@ -18,6 +18,10 @@ spec:
       labels:
         service: {{ .Values.redis.microservice }} 
     spec:
+    {{ if eq .Values.env "pre" }}
+      topologySpreadConstraints: 
+{{ .Values.redis.topologySpreadConstraints | toYaml | indent 8 }}
+    {{ end }}
       containers:
       - name: {{ .Values.redis.microservice }}
         image: {{ .Values.redis.container.image.name }}

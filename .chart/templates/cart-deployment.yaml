@@ -17,6 +17,10 @@ spec:
       labels:
         service: {{ .Values.cart.microservice }}
     spec:
+    {{ if eq .Values.env "pre" }}
+      topologySpreadConstraints: 
+{{ .Values.cart.topologySpreadConstraints | toYaml | indent 8 }}
+    {{ end }}
       containers:
       - name: {{ .Values.cart.microservice }}
         image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.version }}"

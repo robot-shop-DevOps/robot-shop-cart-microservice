@@ -1,0 +1,7 @@
+env: dev
+
+cart:
+  replicas: 1
+
+redis:
+  replicas: 1
