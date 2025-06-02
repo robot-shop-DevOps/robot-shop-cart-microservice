@@ -1,47 +1,7 @@
 env: dev
 
 cart:
-  microservice: cart
   replicas: 1
-  container:
-    image:
-      repo: ${REPO}    # <-- placeholder
-      version: ${IMAGE_TAG}    # <-- placeholder
-      pullPolicy: IfNotPresent
-    port: 8080
-    env:
-    - name: INSTANA_AUTO_PROFILE
-      value: "true"
-    - name: REDIS_HOST
-      value: redis-service
-    - name: CATALOGUE_HOST
-      value: catalogue-service
-  service:
-    type: ClusterIP
-    port: 8080
 
 redis:
-  microservice: redis
-
   replicas: 1
-
-  container:
-    image:
-      name: redis:4.0.6
-      pullPolicy: IfNotPresent
-    port: 6379
-    volumeMounts:
-      name: redis-data
-      mountPath: /data
-
-  volumeClaimTemplates:
-    name: redis-data
-    accessModes: [ "ReadWriteOnce" ]
-    storageClassName: standard
-    resources:
-      storage: 1Gi
-      
-  service:
-    type: ClusterIP
-    port: 6379
-    targetPort: 6379
