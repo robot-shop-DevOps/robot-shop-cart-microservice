@@ -1,6 +1,18 @@
+env: pre
+
 cart:
   microservice: cart
-  replicas: 1
+
+  replicas: 2
+
+  topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector: 
+      matchLabels:
+        service: .Values.cart.microservice
+
   container:
     image:
       repo: ${REPO}    # <-- placeholder
@@ -14,14 +26,24 @@ cart:
       value: redis-service
     - name: CATALOGUE_HOST
       value: catalogue-service
+
   service:
     type: ClusterIP
     port: 8080
 
 redis:
-  enable: false
   microservice: redis
-  replicas: 1
+
+  replicas: 2
+
+  topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector: 
+      matchLabels:
+        service: .Values.redis.microservice
+
   container:
     image:
       name: redis:4.0.6
@@ -30,12 +52,14 @@ redis:
     volumeMounts:
       name: redis-data
       mountPath: /data
+
   volumeClaimTemplates:
     name: redis-data
     accessModes: [ "ReadWriteOnce" ]
     storageClassName: standard
     resources:
       storage: 1Gi
+
   service:
     type: ClusterIP
     port: 6379

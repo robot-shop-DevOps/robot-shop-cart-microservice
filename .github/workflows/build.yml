@@ -113,6 +113,7 @@ jobs:
     - name: Deploy with helm
       run: |
         helm upgrade ${{ env.RELEASE }} ${{ steps.helmcharts.outputs.chart_path }} \
+        -f values-dev.yaml \
         --namespace ${{ env.namespace }} --install --atomic \
         --set cart.container.image.repo=${{ env.ECR_URL }}/robot-shop \
         --set cart.container.image.version=${{ env.IMAGE_NAME }}-${{ needs.build.outputs.IMAGE_TAG }}
