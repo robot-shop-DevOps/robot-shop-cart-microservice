@@ -166,9 +166,10 @@ pipeline {
                     def namespace = "${env.project}-pre"
                     def namespace_found = sh(script: "kubectl get ns ${namespace} > /dev/null", returnStatus: true) == 0
 
+                    env.namespace = namespace
+                    env.namespace_found = namespace_found.toString()
+
                     if(namespace_found) {
-                        env.namespace = namespace
-                        env.namespace_found = namespace_found.toString()
                         echo "✅ Namespace ${env.namespace} found"
                     }
                     else {
@@ -190,6 +191,7 @@ pipeline {
 
                     if(status) {
                         env.namespace = namespace
+                        env.namespace_found = 'true'
                         echo "✅ Namespace ${env.namespace} created."
                     }
                     else{
@@ -202,7 +204,7 @@ pipeline {
         stage('Validate Helm charts') {
             steps {
                 script {
-                    def chart_path = sh(script: "find . -type d -name '.chart' -print -quit", returnStatus: true).trim()
+                    def chart_path = sh(script: "find . -type d -name '.chart' -print -quit", returnStatus: true)
 
                     if(!chart_path) {
                         error "❌ Error: Helm chart directory not found"
@@ -222,6 +224,11 @@ pipeline {
         stage('Deploy with helm') {
             steps {
                 sh '''
+                    if [[ $namespace_found == "false" ]]; then
+                        echo "❌ Can't deploy helm charts, Namespace $namespace_found is not found."
+                        exit 1
+                    fi
+
                     helm upgrade $release $chart_path \
                     -f "$chart_path"/values.yaml -f "$chart_path"/values-pre.yaml \
                     --namespace $namespace --install --atomic \
