@@ -168,7 +168,7 @@ pipeline {
 
                     if(namespace_found) {
                         env.namespace = namespace
-                        env.namespace_found = namespace_found
+                        env.namespace_found = namespace_found.toString()
                         echo "✅ Namespace ${env.namespace} found"
                     }
                     else {
@@ -180,7 +180,7 @@ pipeline {
 
         stage('Create project namespace') {
             when {
-                environment name: 'namespace_found', value: false
+                environment name: 'namespace_found', value: 'false'
             }
 
             steps {
