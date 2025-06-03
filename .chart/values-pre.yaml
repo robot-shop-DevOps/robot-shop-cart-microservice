@@ -9,7 +9,7 @@ cart:
     whenUnsatisfiable: DoNotSchedule
     labelSelector: 
       matchLabels:
-        service: .Values.cart.microservice
+        service: cart
 
 redis:
   replicas: 2
@@ -20,4 +20,4 @@ redis:
     whenUnsatisfiable: DoNotSchedule
     labelSelector: 
       matchLabels:
-        service: .Values.redis.microservice
+        service: redis
