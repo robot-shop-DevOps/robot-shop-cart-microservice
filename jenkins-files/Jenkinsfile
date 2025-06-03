@@ -202,7 +202,7 @@ pipeline {
         stage('Validate Helm charts') {
             steps {
                 script {
-                    def chart_path = sh(script: "find . -type d -name ".chart" -print -quit", returnStatus: true).trim()
+                    def chart_path = sh(script: "find . -type d -name '.chart' -print -quit", returnStatus: true).trim()
 
                     if(!chart_path) {
                         error "❌ Error: Helm chart directory not found"
