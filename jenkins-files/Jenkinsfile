@@ -20,9 +20,9 @@ pipeline {
 
                         sh '''
                             if helm version > /dev/null; then                                
-                                echo "Helm is installed with version: $(helm --version)"
+                                echo "✅ Helm is installed with version: $(helm version)"
                             else
-                                echo "Helm not installed!!! Aborting the job"
+                                echo "❌ Helm not installed!!! Aborting the job"
                                 exit 1
                             fi
                         '''
@@ -35,9 +35,9 @@ pipeline {
 
                         sh '''
                             if aws --version > /dev/null; then                                
-                                echo "AWS CLI is installed with version: $(aws --version)"
+                                echo "✅ AWS CLI is installed with version: $(aws --version)"
                             else
-                                echo "AWS CLI not installed!!! Aborting the job"
+                                echo "❌ AWS CLI not installed!!! Aborting the job"
                                 exit 1
                             fi
                         '''
@@ -50,9 +50,9 @@ pipeline {
 
                         sh '''
                             if docker --version > /dev/null; then                                
-                                echo "Docker is installed with version: $(docker --version)"
+                                echo "✅ Docker is installed with version: $(docker --version)"
                             else
-                                echo "Docker not installed!!! Aborting the job"
+                                echo "❌ Docker not installed!!! Aborting the job"
                                 exit 1
                             fi
                         '''
@@ -65,9 +65,9 @@ pipeline {
 
                         sh '''
                             if kind version > /dev/null; then                                
-                                echo "Kind is installed with version: $(kind version)"
+                                echo "✅ Kind is installed with version: $(kind version)"
                             else
-                                echo "Kind not installed!!! Aborting the job"
+                                echo "❌ Kind not installed!!! Aborting the job"
                                 exit 1
                             fi
                         '''
@@ -204,7 +204,7 @@ pipeline {
         stage('Validate Helm charts') {
             steps {
                 script {
-                    def chart_path = sh(script: "find . -type d -name '.chart' -print -quit", returnStatus: true)
+                    def chart_path = sh(script: "find . -type d -name '.chart' -print -quit", returnStdout: true).trim()
 
                     if(!chart_path) {
                         error "❌ Error: Helm chart directory not found"
