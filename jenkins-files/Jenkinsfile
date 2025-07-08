@@ -156,7 +156,7 @@ pipeline {
 
         stage('Deploy with helm') {
             steps {
-                withCredentials([string(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
+                withCredentials([file(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
                     sh '''
                         helm upgrade $release $chart_path \
                         -f "$chart_path"/values.yaml -f "$chart_path"/values-pre.yaml \
@@ -170,7 +170,7 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                withCredentials([string(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
+                withCredentials([file(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
                     sh '''
                         kubectl rollout status deployment/cart-deployment --namespace $namespace
                         kubectl rollout status statefulset/redis-statefulset --namespace $namespace
