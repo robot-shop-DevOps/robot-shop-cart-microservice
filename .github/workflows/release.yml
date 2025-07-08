@@ -50,6 +50,7 @@ jobs:
             exit 1
           elif [[ $build_result == "SUCCESS" ]]; then
             echo "The build has Succeeded ✅"
+            sleep 30
             break
           else
             echo "Waiting to complete..."
