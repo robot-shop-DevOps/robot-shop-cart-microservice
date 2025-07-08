@@ -8,6 +8,7 @@ pipeline {
         aws_creds = credentials('ECR_SA')
         image_name = 'cart-ms' 
         project = 'robot-shop' 
+        namespace = 'robot-shop-pre'
         release = 'cart-microservice'    
     }
     
@@ -133,74 +134,6 @@ pipeline {
             }
         }
 
-        stage('Check Pre01 cluster connectivity') {
-            steps {
-                sh '''
-                    if docker ps --filter 'name=pre01-control-plane' > /dev/null; then
-                      echo "✅ Kind Pre01 control plane is running!"
-                    else
-                      echo "❌ Kind Pre01 control plane not reachable."
-                      exit 1
-                    fi
-
-                    if kubectl --context=kind-pre01 get nodes > /dev/null; then
-                      echo "✅ Kind Pre01 node reachable."
-                    else
-                      echo "❌ Kind Pre01 node not reachable."
-                      exit 1
-                    fi
-
-                    if kubectl --context=kind-pre01 cluster-info > /dev/null; then
-                      echo "✅ Pre01 cluster info - $(kubectl --context=kind-pre01 cluster-info)"
-                    else
-                      echo "❌ Pre01 cluster info not available."
-                      exit 1
-                    fi
-                '''
-            }
-        }
-
-        stage('Find Project Namespace') {
-            steps {
-                script {
-                    def namespace = "${env.project}-pre"
-                    def namespace_found = sh(script: "kubectl get ns ${namespace} > /dev/null", returnStatus: true) == 0
-
-                    env.namespace = namespace
-                    env.namespace_found = namespace_found.toString()
-
-                    if(namespace_found) {
-                        echo "✅ Namespace ${env.namespace} found"
-                    }
-                    else {
-                        echo "❌ Namespace ${env.namespace} not found"
-                    }
-                }
-            }
-        }
-
-        stage('Create project namespace') {
-            when {
-                environment name: 'namespace_found', value: 'false'
-            }
-
-            steps {
-                script {
-                    def namespace = "${env.project}-pre"
-                    def status = sh(script: "kubectl create ns ${namespace} > /dev/null", returnStatus: true) == 0
-
-                    if(status) {
-                        env.namespace = namespace
-                        env.namespace_found = 'true'
-                        echo "✅ Namespace ${env.namespace} created."
-                    }
-                    else{
-                        error "❌ Namespace ${env.namespace} failed to create."
-                    }
-                }
-            }
-        }
-
         stage('Validate Helm charts') {
             steps {
                 script {
@@ -223,28 +156,27 @@ pipeline {
 
         stage('Deploy with helm') {
             steps {
-                sh '''
-                    if [[ $namespace_found == "false" ]]; then
-                        echo "❌ Can't deploy helm charts, Namespace $namespace_found is not found."
-                        exit 1
-                    fi
-
-                    helm upgrade $release $chart_path \
-                    -f "$chart_path"/values.yaml -f "$chart_path"/values-pre.yaml \
-                    --namespace $namespace --install --atomic \
-                    --set cart.container.image.repo="$ecr_url"/robot-shop-pre/$image_name \
-                    --set cart.container.image.version=$image_tag
-                '''
+                withCredentials([string(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
+                    sh '''
+                        helm upgrade $release $chart_path \
+                        -f "$chart_path"/values.yaml -f "$chart_path"/values-pre.yaml \
+                        --namespace $namespace --install --atomic \
+                        --set cart.container.image.repo="$ecr_url"/robot-shop-pre/$image_name \
+                        --set cart.container.image.version=$image_tag
+                    '''
+                }
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                sh '''
-                    kubectl rollout status deployment/cart-deployment --namespace $namespace
-                    kubectl rollout status statefulset/redis-statefulset --namespace $namespace
-                    helm status $release --namespace $namespace --output table
-                '''
+                withCredentials([string(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
+                    sh '''
+                        kubectl rollout status deployment/cart-deployment --namespace $namespace
+                        kubectl rollout status statefulset/redis-statefulset --namespace $namespace
+                        helm status $release --namespace $namespace --output table
+                    '''
+                }
             }
         }
     }
