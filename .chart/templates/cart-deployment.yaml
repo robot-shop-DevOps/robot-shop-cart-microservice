@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.version }}
+    app.kubernetes.io/Version: {{ .Chart.Version }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: {{ .Values.cart.microservice }}
     {{- range $key,$value := .Values.cart.labels }}
@@ -22,7 +22,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ .Chart.Name }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/version: {{ .Chart.version }}
+      app.kubernetes.io/Version: {{ .Chart.Version }}
       app.kubernetes.io/managed-by: {{ .Release.Service }}
       app.kubernetes.io/component: {{ .Values.cart.microservice }}
       {{- range $key,$value := .Values.cart.labels }}
@@ -33,7 +33,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/version: {{ .Chart.version }}
+        app.kubernetes.io/Version: {{ .Chart.Version }}
         app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/component: {{ .Values.cart.microservice }}
         {{- range $key,$value := .Values.cart.labels }}
@@ -48,7 +48,7 @@ spec:
     {{- end }}
       containers:
       - name: {{ .Values.cart.microservice }}
-        image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.version }}"
+        image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.Version }}"
         imagePullPolicy: {{ .Values.cart.container.image.imagePullPolicy }}
         ports: 
         - containerPort: {{ .Values.cart.container.port }}

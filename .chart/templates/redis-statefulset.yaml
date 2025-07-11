@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.version }}
+    app.kubernetes.io/Version: {{ .Chart.Version }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: {{ .Values.redis.microservice }}
     {{- range $key,$value := .Values.redis.labels }}
@@ -19,7 +19,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ .Chart.Name }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/version: {{ .Chart.version }}
+      app.kubernetes.io/Version: {{ .Chart.Version }}
       app.kubernetes.io/managed-by: {{ .Release.Service }}
       app.kubernetes.io/component: {{ .Values.redis.microservice }}
       {{- range $key,$value := .Values.redis.labels }}
@@ -34,7 +34,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/version: {{ .Chart.version }}
+        app.kubernetes.io/Version: {{ .Chart.Version }}
         app.kubernetes.io/managed-by: {{ .Release.Service }}
         app.kubernetes.io/component: {{ .Values.redis.microservice }}
         {{- range $key,$value := .Values.redis.labels }}
