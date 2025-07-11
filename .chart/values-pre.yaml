@@ -2,9 +2,19 @@ env: pre
 
 cart:
   replicas: 2
-
+  labels:
+    env: pre
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: env
+            operator: In
+            values:
+            - Pre
   topologySpreadConstraints:
-  - maxSkew: 1
+  - maxSkew: 2
     topologyKey: kubernetes.io/hostname
     whenUnsatisfiable: DoNotSchedule
     labelSelector: 
@@ -13,7 +23,17 @@ cart:
 
 redis:
   replicas: 2
-
+  labels:
+    env: pre
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: env
+            operator: In
+            values:
+            - Pre
   topologySpreadConstraints:
   - maxSkew: 1
     topologyKey: kubernetes.io/hostname

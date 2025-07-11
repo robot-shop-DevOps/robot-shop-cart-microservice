@@ -1,6 +1,13 @@
 cart:
   microservice: cart
+  labels:
+    service: cart
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   container:
     image:
       repo: ${REPO}    # <-- placeholder
@@ -20,9 +27,13 @@ cart:
 
 redis:
   microservice: redis
-
+  labels:
+    service: cart
   replicas: 1
-
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
   container:
     image:
       name: redis:4.0.6
@@ -31,14 +42,12 @@ redis:
     volumeMounts:
       name: redis-data
       mountPath: /data
-
   volumeClaimTemplates:
     name: redis-data
     accessModes: [ "ReadWriteOnce" ]
     storageClassName: standard
     resources:
-      storage: 1Gi
-      
+      storage: 1Gi  
   service:
     type: ClusterIP
     port: 6379

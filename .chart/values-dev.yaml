@@ -2,6 +2,10 @@ env: dev
 
 cart:
   replicas: 1
+  labels:
+    env: dev
 
 redis:
   replicas: 1
+  labels:
+    env: dev

@@ -5,23 +5,41 @@ kind: StatefulSet
 metadata:
   name: {{ .Values.redis.microservice }}-statefulset
   labels:
-    service: {{ .Values.redis.microservice }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: {{ .Values.redis.microservice }}
+    {{- range $key,$value .Values.redis.labels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
 
 spec:
   selector:
     matchLabels:
-      service: {{ .Values.redis.microservice }}
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/version: {{ .Chart.AppVersion }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+      app.kubernetes.io/component: {{ .Values.redis.microservice }}
+      {{- range $key,$value .Values.redis.labels }}
+      {{ $key }}: {{ $value }}
+      {{- end }}
   serviceName: {{ .Values.redis.microservice }}
   replicas: {{ .Values.redis.replicas }}
+  updateStrategy:
+{{ .Values.redis.updateStrategy | toYaml | indent 4 }}
   template:
     metadata:
       labels:
         service: {{ .Values.redis.microservice }} 
     spec:
-    {{ if eq .Values.env "pre" }}
+    {{- if eq .Values.env "pre" }}
       topologySpreadConstraints: 
 {{ .Values.redis.topologySpreadConstraints | toYaml | indent 8 }}
-    {{ end }}
+      affinity:
+{{ .Values.redis.affinity | toYaml | indent 8 }}
+    {{- end }}
       containers:
       - name: {{ .Values.redis.microservice }}
         image: {{ .Values.redis.container.image.name }}
