@@ -35,6 +35,8 @@ jobs:
   build:
     needs: prepare
     runs-on: robot-shop-runner
+    outputs:
+      IMAGE_TAG: ${{ steps.version.outputs.IMAGE_TAG }}
     steps:
     - name: Get latest docker image version
       id: version
