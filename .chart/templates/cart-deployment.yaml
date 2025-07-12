@@ -48,7 +48,7 @@ spec:
     {{- end }}
       containers:
       - name: {{ .Values.cart.microservice }}
-        image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.Version }}"
+        image: "{{ .Values.cart.container.image.repo }}:{{ .Values.cart.container.image.version }}"
         imagePullPolicy: {{ .Values.cart.container.image.imagePullPolicy }}
         ports: 
         - containerPort: {{ .Values.cart.container.port }}
