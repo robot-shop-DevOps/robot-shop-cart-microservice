@@ -1,3 +1,5 @@
+@Library('robot-shop') _
+
 pipeline {
     agent any
 
@@ -14,65 +16,9 @@ pipeline {
     
     stages {
         stage('Checking dependencies') {
-            stages {
-                stage('Check helm dependency') {
-                    steps {
-                        echo "Checking helm status"
-
-                        sh '''
-                            if helm version > /dev/null; then                                
-                                echo "✅ Helm is installed with version: $(helm version)"
-                            else
-                                echo "❌ Helm not installed!!! Aborting the job"
-                                exit 1
-                            fi
-                        '''
-                    }
-                }
-
-                stage('Check AWS CLI dependency') {
-                    steps {
-                        echo "Checking AWS CLI status"
-
-                        sh '''
-                            if aws --version > /dev/null; then                                
-                                echo "✅ AWS CLI is installed with version: $(aws --version)"
-                            else
-                                echo "❌ AWS CLI not installed!!! Aborting the job"
-                                exit 1
-                            fi
-                        '''
-                    }
-                }
-
-                stage('Check docker dependency') {
-                    steps {
-                        echo "Checking docker status"
-
-                        sh '''
-                            if docker --version > /dev/null; then                                
-                                echo "✅ Docker is installed with version: $(docker --version)"
-                            else
-                                echo "❌ Docker not installed!!! Aborting the job"
-                                exit 1
-                            fi
-                        '''
-                    }
-                }
-
-                stage('Check kind dependency') {
-                    steps {
-                        echo "Checking kind status"
-
-                        sh '''
-                            if kind version > /dev/null; then                                
-                                echo "✅ Kind is installed with version: $(kind version)"
-                            else
-                                echo "❌ Kind not installed!!! Aborting the job"
-                                exit 1
-                            fi
-                        '''
-                    }
+            steps {
+                script {
+                    checkDependencies()
                 }
             }
         }
@@ -85,97 +31,39 @@ pipeline {
             }
         }
 
-        stage('Get latest docker image version') {
-            steps {
-                echo "Fetching latest docker image tag"
-
-                script {
-                    def commitSHA = env.GIT_COMMIT
-                    def imageTag = commitSHA[0..7]
-                    env.image_tag = imageTag
-                }
-
-                echo "Latest docker image tag: ${env.image_tag}"
-            }
-        }
-
         stage('Login to ECR') {
             steps {
-                echo "Logging into ECR with service account"
-
-                sh '''
-                    aws ecr-public get-login-password \
-                    --region $aws_region_ecr | \
-                    docker login \
-                    --username AWS \
-                    --password-stdin $ecr_url   
-                '''
+                script {
+                    ecr([
+                        region = env.aws_region_ecr,
+                        url    = env.ecr_url
+                    ])
+                }
             }
         }
 
-        stage('Build docker image') {
-            steps {
-                echo "Building docker image"
-
-                sh '''
-                    docker build -t $image_name .
-                    docker tag $image_name $ecr_url/robot-shop-pre/cart-ms:$image_tag
-                '''
-            }
-        }
-
-        stage('Push docker image') {
-            steps {
-                echo "Pushing docker image to ECR repo"
-
-                sh '''
-                    docker push $ecr_url/robot-shop-pre/cart-ms:$image_tag
-                '''
-            }
-        }
-
-        stage('Validate Helm charts') {
+        stage('Build & Push docker image') {
             steps {
                 script {
-                    def chart_path = sh(script: "find . -type d -name '.chart' -print -quit", returnStdout: true).trim()
-
-                    if(!chart_path) {
-                        error "❌ Error: Helm chart directory not found"
-                    }
-
-                    env.chart_path = chart_path
-
-                    sh '''
-                        echo "Using chart path: $chart_path"
-                        cd $chart_path
-                        helm lint
-                    '''
+                    docker([
+                        gitCommit = env.GIT_COMMIT,
+                        imageName = env.image_name,
+                        ecrUrl    = env.ecr_url
+                    ])
                 }
             }
         }
 
-        stage('Deploy with helm') {
+        stage('Validate & Deploy helm charts') {
             steps {
-                withCredentials([file(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
-                    sh '''
-                        helm upgrade $release $chart_path \
-                        -f "$chart_path"/values.yaml -f "$chart_path"/values-pre.yaml \
-                        --namespace $namespace --install --atomic \
-                        --set cart.container.image.repo="$ecr_url"/robot-shop-pre/$image_name \
-                        --set cart.container.image.version=$image_tag
-                    '''
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                withCredentials([file(credentialsId: 'jenkins-kubeconfig', variable: 'KUBECONFIG')]){
-                    sh '''
-                        kubectl rollout status deployment/cart-deployment --namespace $namespace
-                        kubectl rollout status statefulset/redis-statefulset --namespace $namespace
-                        helm status $release --namespace $namespace --output table
-                    '''
+                script {
+                    helm([
+                        release   = env.release,
+                        namespace = env.namespace,
+                        ecrUrl    = env.ecr_url,
+                        imageName = env.image_name,
+                        imageTag  = env.image_tag
+                    ])
                 }
             }
         }
