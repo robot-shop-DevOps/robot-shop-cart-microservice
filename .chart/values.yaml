@@ -1,54 +1,75 @@
-cart:
-  microservice: cart
-  labels:
-    service: cart
-  replicas: 1
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 1
-  container:
-    image:
-      repo: ${REPO}    # <-- placeholder
-      version: ${IMAGE_TAG}    # <-- placeholder
-      pullPolicy: IfNotPresent
-    port: 8080
-    env:
-    - name: INSTANA_AUTO_PROFILE
-      value: "true"
-    - name: REDIS_HOST
-      value: redis-service
-    - name: CATALOGUE_HOST
-      value: catalogue-service
-  service:
-    type: ClusterIP
-    port: 8080
+labels:
+  app: Cart
+  project: Robot-Shop
+  technology: NodeJs
+  environment: default 
 
-redis:
-  microservice: redis
-  labels:
-    service: cart
+deployment:
+  name: cart
+
   replicas: 1
+
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 1
-  container:
-    image:
-      name: redis:4.0.6
-      pullPolicy: IfNotPresent
-    port: 6379
-    volumeMounts:
-      name: redis-data
-      mountPath: /data
-  volumeClaimTemplates:
-    name: redis-data
-    accessModes: [ "ReadWriteOnce" ]
-    storageClassName: standard
-    resources:
-      storage: 1Gi  
-  service:
-    type: ClusterIP
-    port: 6379
-    targetPort: 6379
+
+  pod:
+    nodeSelector:
+      project: Robot-Shop
+
+    containers:  
+    - name: cart
+
+      image: ${IMAGE}  # <-- placeholder
+
+      imagePullPolicy: Always
+
+      ports:
+      - containerPort: 8326
+
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "128Mi"
+
+        limits:
+          cpu: "200m"
+          memory: "512Mi"
+
+      env:
+      - name: CART_SERVER_PORT 
+        value: "8326"
+
+      - name: REDIS_HOST  
+        value: redis-service-headless.redis-database.svc.cluster.local
+       
+      - name: CATALOGUE_HOST
+        value: catalogue.catalogue-microservice.svc.cluster.local
+
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8326
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        failureThreshold: 3
+        
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8326
+        initialDelaySeconds: 15
+        periodSeconds: 20
+        failureThreshold: 3
+
+
+service:
+  name: cart
+
+  type: ClusterIP
+
+  ports:
+  - name: cart
+    port: 8326
+    targetPort: 8326

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: {{ .Values.deployment.name }}
+
+  labels:
+{{ .Values.labels | toYaml | indent 4 }}
+
+spec:
+  selector:
+    matchLabels:
+{{ .Values.labels | toYaml | indent 6 }}
+
+  replicas: {{ .Values.deployment.replicas }}
+
+  updateStrategy:
+{{ .Values.deployment.updateStrategy | toYaml | indent 4 }}
+
+  template:
+    metadata:
+      labels:
+{{ .Values.labels | toYaml | indent 8 }}
+
+    spec:
+      nodeSelector:
+{{ .Values.deployment.pod.nodeSelector | toYaml | indent 8 }}
+
+      containers:
+{{ .Values.deployment.pod.containers | toYaml | indent 8 }}

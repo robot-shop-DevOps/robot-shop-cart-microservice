@@ -1,0 +1,9 @@
+labels:
+  environment: dev
+
+deployment:
+  replicas: 1
+
+  pod:
+    nodeSelector:
+      environment: dev
