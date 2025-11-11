@@ -1,0 +1,26 @@
+{
+  "name": "cart",
+  "version": "1.0.0",
+  "description": "cart REST API",
+  "main": "server.js",
+  "scripts": {
+    "test": "jest --runInBand"
+  },
+  "author": "Shashank Palla",
+  "license": "Apache-2.0",
+  "dependencies": {
+      "body-parser": "^1.18.1",
+      "express": "^4.15.4",
+      "redis": "^2.8.0",
+      "request": "^2.88.2",
+      "pino": "^5.10.8",
+      "express-pino-logger": "^4.0.0",
+      "pino-pretty": "^2.5.0",
+      "@instana/collector": "^1.132.2",
+      "prom-client": "^11.5.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.1.4"
+  }
+}
