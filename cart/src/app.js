@@ -96,6 +96,11 @@ class CartServiceApp {
     // add item
     this.app.get('/add/:id/:sku/:qty', async (req, res) => {
       const qty = parseInt(req.params.qty);
+
+      if (!req.params.id || req.params.id === 'undefined') {
+          return res.status(401).send('User not logged in');
+      }
+
       if (isNaN(qty) || qty < 1)
         return res.status(400).send('quantity must be a positive number');
 
