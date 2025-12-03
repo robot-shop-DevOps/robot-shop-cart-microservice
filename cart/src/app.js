@@ -15,21 +15,11 @@ class CartServiceApp {
     this.catalogueUrl = 'http://' + this.catalogueHost + ':8226/'
 
     this.logger = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
-    this.expLogger = expPino({ 
+    this.expLogger = expPino({
       logger: this.logger,
-
-      customLogLevel: function (req, res, err) {
-        if (req.url === '/health') {
-          return 'silent';
-        }
-
-        if (err) {
-          return 'error';
-        }
-
-        return 'info';
+      autoLogging: {
+        ignorePaths: ['/health']
       }
-
     });
 
     this.app = express();
