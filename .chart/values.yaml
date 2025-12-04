@@ -47,6 +47,12 @@ deployment:
       - name: CATALOGUE_HOST
         value: catalogue.catalogue-microservice.svc.cluster.local
 
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: jwt
+            key: JWT_SECRET
+
       readinessProbe:
         httpGet:
           path: /health

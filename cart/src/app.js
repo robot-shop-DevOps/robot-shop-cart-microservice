@@ -1,20 +1,22 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const pino = require('pino');
-const expPino = require('express-pino-logger');
-const request = require('request');
+const express          = require('express');
+const bodyParser       = require('body-parser');
+const jwt              = require('jsonwebtoken');
+const pino             = require('pino');
+const expPino          = require('express-pino-logger');
+const request          = require('request');
 const { createClient } = require('redis');
 
 class CartServiceApp {
   constructor(options = {}) {
-    const { redisHost, catalogueHost, mockRedisClient } = options;
+    const { redisHost, catalogueHost, mockRedisClient, jwtsecret } = options;
 
     this.redisConnected = false;
-    this.redisHost = redisHost;
-    this.catalogueHost = catalogueHost;
-    this.catalogueUrl = 'http://' + this.catalogueHost + ':8226/'
+    this.redisHost      = redisHost;
+    this.catalogueHost  = catalogueHost;
+    this.catalogueUrl   = 'http://' + this.catalogueHost + ':8226/'
+    this.jwtsecret      = jwtsecret
 
-    this.logger = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
+    this.logger    = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
     this.expLogger = expPino({
       logger: this.logger,
       autoLogging: {
@@ -26,7 +28,6 @@ class CartServiceApp {
     this.setupMiddleware();
     this.setupRoutes();
 
-    // Redis or mock
     if (mockRedisClient) {
       this.redisClient = mockRedisClient;
       this.redisConnected = true;
@@ -48,6 +49,27 @@ class CartServiceApp {
     });
   }
 
+  authMiddleware(req, res, next) {
+    const header = req.headers['authorization'];
+    if (!header) return res.status(401).send('Missing Authorization header');
+
+    const token = header.split(' ')[1];
+    if (!token) return res.status(401).send('Missing token');
+
+    try {
+        const decoded = jwt.verify(token, this.jwtsecret);
+        req.user = decoded;
+
+        if (req.params.id && req.params.id !== decoded.name) {
+            return res.status(403).send('User mismatch');
+        }
+
+        next();
+    } catch (e) {
+        return res.status(403).send('Invalid or expired token');
+    }
+  }
+
   setupRoutes() {
     // health
     this.app.get('/health', async (req, res) => {
@@ -60,7 +82,7 @@ class CartServiceApp {
     });
 
     // get cart
-    this.app.get('/cart/:id', async (req, res) => {
+    this.app.get('/cart/:id', this.authMiddleware.bind(this), async (req, res) => {
       try {
         const data = await this.redisClient.get(req.params.id);
         if (!data) return res.status(404).send('cart not found');
@@ -72,7 +94,7 @@ class CartServiceApp {
     });
 
     // delete cart
-    this.app.delete('/cart/:id', async (req, res) => {
+    this.app.delete('/cart/:id', this.authMiddleware.bind(this), async (req, res) => {
       try {
         const result = await this.redisClient.del(req.params.id);
         if (result === 1) res.send('OK');
@@ -83,23 +105,8 @@ class CartServiceApp {
       }
     });
 
-    // rename cart
-    this.app.get('/rename/:from/:to', async (req, res) => {
-      try {
-        const data = await this.redisClient.get(req.params.from);
-        if (!data) return res.status(404).send('cart not found');
-
-        const cart = JSON.parse(data);
-        await this.saveCart(req.params.to, cart);
-        res.json(cart);
-      } catch (err) {
-        req.log.error(err);
-        res.status(500).send(err);
-      }
-    });
-
     // add item
-    this.app.get('/add/:id/:sku/:qty', async (req, res) => {
+    this.app.get('/add/:id/:sku/:qty', this.authMiddleware.bind(this), async (req, res) => {
       const qty = parseInt(req.params.qty);
 
       if (!req.params.id || req.params.id === 'undefined') {
@@ -138,7 +145,7 @@ class CartServiceApp {
     });
 
     // update quantity
-    this.app.get('/update/:id/:sku/:qty', async (req, res) => {
+    this.app.get('/update/:id/:sku/:qty', this.authMiddleware.bind(this), async (req, res) => {
       const qty = parseInt(req.params.qty);
       if (isNaN(qty) || qty < 0)
         return res.status(400).send('quantity must be non-negative number');
@@ -169,7 +176,7 @@ class CartServiceApp {
     });
 
     // shipping
-    this.app.post('/shipping/:id', async (req, res) => {
+    this.app.post('/shipping/:id', this.authMiddleware.bind(this), async (req, res) => {
       const shipping = req.body;
       if (!shipping.distance || !shipping.cost || !shipping.location)
         return res.status(400).send('shipping data missing');
