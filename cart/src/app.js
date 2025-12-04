@@ -212,7 +212,7 @@ class CartServiceApp {
 
   async checkCatalogue() {
     return new Promise((resolve) => {
-        request(this.catalogueUrl + 'health', (err, res, body) => {
+        request(this.catalogueUrl + '/health', (err, res, body) => {
         if (err || res.statusCode !== 200) resolve(false);
         else resolve(true);
         });
