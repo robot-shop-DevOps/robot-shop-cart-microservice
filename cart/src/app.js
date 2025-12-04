@@ -13,7 +13,7 @@ class CartServiceApp {
     this.redisConnected = false;
     this.redisHost      = redisHost;
     this.catalogueHost  = catalogueHost;
-    this.catalogueUrl   = 'http://' + this.catalogueHost + ':8226/'
+    this.catalogueUrl   = 'http://' + this.catalogueHost + ':8226'
     this.jwtsecret      = jwtsecret
 
     this.logger    = pino({ level: 'info', prettyPrint: false, useLevelLabels: true });
