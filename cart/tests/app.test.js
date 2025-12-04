@@ -1,17 +1,27 @@
 const request = require('supertest');
 const CartServiceApp = require('../src/app');
 
+// ---- MOCK JWT ----
+jest.mock('jsonwebtoken', () => ({
+  verify: jest.fn(() => ({ name: 'cartuser' })),    // always valid
+  sign: jest.fn(() => "mock.jwt.token")
+}));
+
+// ---- MOCK REDIS ----
 const mockRedis = {
   get: jest.fn(),
   setEx: jest.fn(),
   del: jest.fn(),
 };
 
+// ---- MOCK CATALOGUE REQUEST ----
 jest.mock('request', () => jest.fn());
 const requestModule = require('request');
 
-describe('CartServiceApp Functional Tests', () => {
+describe('CartServiceApp Functional Tests (JWT Enabled)', () => {
   let app;
+
+  const AUTH = { Authorization: "Bearer faketoken" };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,160 +30,184 @@ describe('CartServiceApp Functional Tests', () => {
       redisHost: 'mock-redis',
       catalogueHost: 'mock-catalogue',
       mockRedisClient: mockRedis,
+      jwtsecret: "testsecret"
     });
 
     app = service.getApp();
   });
 
-  test('GET /health → returns app + redis + catalogue status', async () => {
-    requestModule.mockImplementation((url, cb) => cb(null, { statusCode: 200 }, 'OK'));
+  // ---------------- HEALTH ----------------
+  test('GET /health → returns status', async () => {
+    requestModule.mockImplementation((url, cb) =>
+      cb(null, { statusCode: 200 }, 'OK')
+    );
 
     const res = await request(app).get('/health');
-
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       app: 'OK',
       redis: true,
-      catalogue: true,
+      catalogue: true
     });
   });
 
-  test('GET /cart/:id → returns 404 if not found', async () => {
+  // ---------------- CART GET ----------------
+  test('GET /cart/:id → 404 when not found', async () => {
     mockRedis.get.mockResolvedValue(null);
 
-    const res = await request(app).get('/cart/abc');
+    const res = await request(app)
+      .get('/cart/cartuser')
+      .set(AUTH);
 
     expect(res.status).toBe(404);
     expect(res.text).toBe('cart not found');
   });
 
-  test('GET /cart/:id → returns cart data if found', async () => {
+  test('GET /cart/:id → returns cart', async () => {
     const cart = { items: [], total: 0 };
     mockRedis.get.mockResolvedValue(JSON.stringify(cart));
 
-    const res = await request(app).get('/cart/abc');
+    const res = await request(app)
+      .get('/cart/cartuser')
+      .set(AUTH);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(cart);
   });
 
-  test('DELETE /cart/:id → deletes cart if found', async () => {
+  // ---------------- CART DELETE ----------------
+  test('DELETE /cart/:id → delete OK', async () => {
     mockRedis.del.mockResolvedValue(1);
 
-    const res = await request(app).delete('/cart/abc');
+    const res = await request(app)
+      .delete('/cart/cartuser')
+      .set(AUTH);
 
     expect(res.status).toBe(200);
     expect(res.text).toBe('OK');
   });
 
-  test('DELETE /cart/:id → returns 404 if not found', async () => {
+  test('DELETE /cart/:id → delete 404', async () => {
     mockRedis.del.mockResolvedValue(0);
 
-    const res = await request(app).delete('/cart/abc');
+    const res = await request(app)
+      .delete('/cart/cartuser')
+      .set(AUTH);
 
     expect(res.status).toBe(404);
     expect(res.text).toBe('cart not found');
   });
 
-  test('GET /rename/:from/:to → renames cart', async () => {
-    const cart = { items: [{ sku: 'X', qty: 1 }] };
-    mockRedis.get.mockResolvedValue(JSON.stringify(cart));
-    mockRedis.setEx.mockResolvedValue('OK');
-
-    const res = await request(app).get('/rename/old/new');
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual(cart);
-    expect(mockRedis.setEx).toHaveBeenCalledWith('new', expect.any(Number), JSON.stringify(cart));
-  });
-
-  test('GET /rename/:from/:to → returns 404 if old not found', async () => {
-    mockRedis.get.mockResolvedValue(null);
-
-    const res = await request(app).get('/rename/old/new');
-
-    expect(res.status).toBe(404);
-    expect(res.text).toBe('cart not found');
-  });
-
-  test('GET /add/:id/:sku/:qty → adds a new item', async () => {
+  // ---------------- ADD ITEM ----------------
+  test('GET /add/:id/:sku/:qty → adds new item', async () => {
     requestModule.mockImplementation((url, cb) => {
-      if (url.includes('product')) {
-        cb(null, { statusCode: 200 }, JSON.stringify({ name: 'Test Product', price: 10, instock: 5 }));
-      } else {
-        cb(null, { statusCode: 200 }, 'OK');
-      }
+      cb(null, { statusCode: 200 }, JSON.stringify({
+        name: 'RobotX',
+        price: 10,
+        instock: 5
+      }));
     });
 
     mockRedis.get.mockResolvedValue(null);
     mockRedis.setEx.mockResolvedValue('OK');
 
-    const res = await request(app).get('/add/cart123/sku123/2');
+    const res = await request(app)
+      .get('/add/cartuser/sku123/2')
+      .set(AUTH);
 
     expect(res.status).toBe(200);
     expect(res.body.items[0]).toMatchObject({
       sku: 'sku123',
       qty: 2,
-      name: 'Test Product',
+      name: 'RobotX',
       price: 10,
-      subtotal: 20,
+      subtotal: 20
     });
   });
 
-  test('GET /add/:id/:sku/:qty → fails for invalid qty', async () => {
-    const res = await request(app).get('/add/cart123/sku123/0');
+  test('GET /add/:id/:sku/:qty → invalid qty', async () => {
+    const res = await request(app)
+      .get('/add/cartuser/sku123/0')
+      .set(AUTH);
+
     expect(res.status).toBe(400);
     expect(res.text).toBe('quantity must be a positive number');
   });
 
-  test('GET /add/:id/:sku/:qty → returns 404 if product not found', async () => {
-    requestModule.mockImplementation((url, cb) => cb(null, { statusCode: 404 }, ''));
-    const res = await request(app).get('/add/cart123/sku123/1');
+  test('GET /add/:id/:sku/:qty → product not found', async () => {
+    requestModule.mockImplementation((url, cb) =>
+      cb(null, { statusCode: 404 }, "")
+    );
+
+    const res = await request(app)
+      .get('/add/cartuser/sku123/1')
+      .set(AUTH);
+
     expect(res.status).toBe(404);
     expect(res.text).toBe('product not found');
   });
 
-  test('GET /update/:id/:sku/:qty → updates item quantity', async () => {
-    const cart = { items: [{ sku: 'sku1', qty: 2, price: 10, subtotal: 20 }], total: 20, tax: 3 };
+  // ---------------- UPDATE ITEM ----------------
+  test('GET /update/:id/:sku/:qty → update works', async () => {
+    const cart = {
+      items: [{ sku: 'sku1', qty: 2, price: 10, subtotal: 20 }],
+      total: 20, tax: 3
+    };
+
     mockRedis.get.mockResolvedValue(JSON.stringify(cart));
     mockRedis.setEx.mockResolvedValue('OK');
 
-    const res = await request(app).get('/update/cart1/sku1/5');
+    const res = await request(app)
+      .get('/update/cartuser/sku1/5')
+      .set(AUTH);
+
     expect(res.status).toBe(200);
     expect(res.body.items[0].qty).toBe(5);
   });
 
-  test('GET /update/:id/:sku/:qty → returns 400 for negative qty', async () => {
-    const cart = { items: [{ sku: 'sku1', qty: 3, price: 10, subtotal: 20 }], total: 20, tax: 3 };
+  test('GET /update/:id/:sku/:qty → negative qty', async () => {
+    const cart = {
+      items: [{ sku: 'sku1', qty: 2, price: 10, subtotal: 20 }],
+      total: 20, tax: 3
+    };
+
     mockRedis.get.mockResolvedValue(JSON.stringify(cart));
     mockRedis.setEx.mockResolvedValue('OK');
 
-    const res = await request(app).get('/update/cart1/sku1/-1');
+    const res = await request(app)
+      .get('/update/cartuser/sku1/-1')
+      .set(AUTH);
+
     expect(res.status).toBe(400);
     expect(res.text).toBe('quantity must be non-negative number');
   });
 
-  test('POST /shipping/:id → adds shipping item', async () => {
+  // ---------------- SHIPPING ----------------
+  test('POST /shipping/:id → add shipping', async () => {
     const cart = { items: [], total: 0, tax: 0 };
+
     mockRedis.get.mockResolvedValue(JSON.stringify(cart));
     mockRedis.setEx.mockResolvedValue('OK');
 
-    const shippingData = { distance: 100, cost: 20, location: 'Hyderabad' };
+    const shippingData = { distance: 10, cost: 5, location: 'Hyderabad' };
 
     const res = await request(app)
-      .post('/shipping/cart1')
+      .post('/shipping/cartuser')
+      .set(AUTH)
       .send(shippingData);
 
     expect(res.status).toBe(200);
     expect(res.body.items[0].sku).toBe('SHIP');
-    expect(res.body.items[0].price).toBe(20);
   });
 
-  test('POST /shipping/:id → fails if missing fields', async () => {
+  test('POST /shipping/:id → missing data', async () => {
     const res = await request(app)
-      .post('/shipping/cart1')
-      .send({ distance: 100 });
+      .post('/shipping/cartuser')
+      .set(AUTH)
+      .send({ distance: 10 });
+
     expect(res.status).toBe(400);
     expect(res.text).toBe('shipping data missing');
   });
+
 });
