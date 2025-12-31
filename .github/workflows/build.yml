@@ -2,12 +2,14 @@ name: Build and Deploy cart microservice to Development
 
 on:
   push:
-    branches:
-      - '**'   
+    branches-ignore:
+      - 'main'   
 
   pull_request:
     branches:
       - develop
+
+  workflow_dispatch:
 
 env:
   REGISTRY_NAME: robotshopdevacr
