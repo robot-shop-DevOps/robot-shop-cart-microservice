@@ -4,7 +4,8 @@
   "description": "cart REST API",
   "main": "server.js",
   "scripts": {
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:ci": "jest --runInBand --ci --reporters=default --reporters=jest-junit"
   },
   "author": "Shashank Palla",
   "license": "Apache-2.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
     "supertest": "^7.1.4"
   }
 }
