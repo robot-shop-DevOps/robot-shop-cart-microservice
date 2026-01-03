@@ -35,8 +35,18 @@ jobs:
         working-directory: ./cart
 
       - name: Run unit tests
-        run: npm test
+        run: npm run test:ci
         working-directory: ./cart
+        env:
+          JEST_JUNIT_OUTPUT_DIR: test-results
+          JEST_JUNIT_OUTPUT_NAME: junit.xml
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cart-microservice-test-results
+          path: ./cart/test-results
 
     build:
       runs-on: robot-shop-runner-azure-dev
