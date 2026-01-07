@@ -13,7 +13,7 @@ on:
 
 jobs:
   deploy:
-    uses: robot-shop-DevOps/robot-shop-github-actions/.github/workflows/microservices-nodesjs.yaml@main
+    uses: robot-shop-DevOps/robot-shop-github-actions/.github/workflows/microservices-nodejs.yaml@main
     with:
       MICROSERVICE: cart
       IMAGE: cart
