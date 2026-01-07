@@ -11,127 +11,14 @@ on:
 
   workflow_dispatch:
 
-env:
-  REGISTRY_NAME: robotshopdevacr
-  REGISTRY_URL: robotshopdevacr.azurecr.io
-  IMAGE_NAME: cart
-  NAMESPACE: cart-microservice
-  RELEASE: cart
-
 jobs:
-    test:
-      runs-on: robot-shop-runner-azure-dev
-      steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ./cart
-
-      - name: Run unit tests
-        run: npm run test:ci
-        working-directory: ./cart
-        env:
-          JEST_JUNIT_OUTPUT_DIR: test-results
-          JEST_JUNIT_OUTPUT_NAME: junit.xml
-
-      - name: Upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cart-microservice-test-results
-          path: ./cart/test-results
-
-    build:
-      runs-on: robot-shop-runner-azure-dev
-      needs: test
-      outputs:
-        IMAGE_TAG: ${{ steps.version.outputs.IMAGE_TAG }}
-      steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Get latest image tag
-        id: version
-        run: |
-          branch_name=$(echo "$GITHUB_REF_NAME" | tr '/' '-')
-          image_tag="$branch_name-${GITHUB_SHA::8}"
-          echo "IMAGE_TAG=$image_tag" >> $GITHUB_OUTPUT
-
-      - name: Log in to ACR with Buildah
-        run: |
-          az login --service-principal -u ${{ secrets.ROBOT_SHOP_DEV_AZURE_CLIENT_ID_ACR }} -p ${{ secrets.ROBOT_SHOP_DEV_AZURE_CLIENT_SECRET_ACR }} --tenant ${{ secrets.AZURE_TENANT_ID }}
-          az account set --subscription ${{ secrets.ROBOT_SHOP_DEV_AZURE_SUBSCRIPTION_ID }}
-          Token=$(az acr login --name ${{ env.REGISTRY_NAME }} --expose-token --output json | jq -r '.accessToken')   
-          buildah login ${{ env.REGISTRY_URL }} -u 00000000-0000-0000-0000-000000000000 -p $Token 
-
-      - name: Build image with Buildah
-        run: |
-          buildah build -t ${{ env.IMAGE_NAME }} ./cart
-          buildah tag ${{ env.IMAGE_NAME }} ${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.IMAGE_TAG }}
-
-      - name: Push image with Buildah
-        run: |
-          buildah push ${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.IMAGE_TAG }}
-
-    deploy:
-      if: ${{ github.ref_name == 'develop' }}
-      needs: build
-      runs-on: robot-shop-runner-azure-dev
-      steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Helm
-        uses: azure/setup-helm@v4.3.0
-        with:
-          version: 3.9.0
-
-      - name: Find project namespace
-        run: |
-          if kubectl get ns ${{ env.NAMESPACE }} > /dev/null; then
-            echo "namespace=${{ env.NAMESPACE }}" >> $GITHUB_ENV
-            echo "namespace_found=true" >> $GITHUB_ENV
-          fi
-
-      - name: Create project namespace
-        if: ${{ env.namespace_found != 'true'}}
-        run: |
-          set -e
-          if kubectl create ns ${{ env.NAMESPACE }} > /dev/null; then
-            echo "Namespace ${{ env.NAMESPACE }} created."
-          else
-            echo "Namespace ${{ env.NAMESPACE }} failed to create."
-          fi
-
-      - name: Validate helm charts
-        id: helmcharts
-        run: |
-          chart_path=$(find . -type d -name ".chart" -print -quit)
-          if [ -z $chart_path ]; then
-            echo "Error: Helm chart directory not found"
-            exit 1
-          fi
-          
-          echo "chart_path=$chart_path" >> $GITHUB_ENV
-          cd $chart_path
-          helm lint
-
-      - name: Deploy with helm
-        run: |
-          helm upgrade ${{ env.RELEASE }} ${{ env.chart_path }} \
-          -f ${{ env.chart_path }}/values.yaml -f ${{ env.chart_path }}/values/values_dev.yaml \
-          --namespace ${{ env.NAMESPACE }} --install --atomic \
-          --set deployment.pod.containers[0].image="${{ env.REGISTRY_URL }}/robot-shop/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.IMAGE_TAG }}"
-
-
-      - name: Verify deployment
-        run: | 
-          kubectl rollout status deployment/cart --namespace ${{ env.NAMESPACE }}
-          helm status ${{ env.RELEASE }} --namespace ${{ env.NAMESPACE }} --output table
+  deploy:
+    uses: robot-shop-DevOps/robot-shop-github-actions/.github/workflows/microservices-nodejs.yaml@main
+    with:
+      MICROSERVICE: cart
+      IMAGE: cart
+      NAMESPACE: cart-microservice
+      RELEASE: cart
+      WORKING_DIR: ./cart
+      DOCKERFILE_PATH: ./cart
+    secrets: inherit
